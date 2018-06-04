@@ -1,0 +1,142 @@
+from nltk import ne_chunk, pos_tag, word_tokenize
+ from nltk.tree import Tree
+ 
+ def get_continuous_chunks(text):
+     chunked = ne_chunk(pos_tag(word_tokenize(text)))
+     #print(chunked)
+     prev = None
+     continuous_chunk = []
+     current_chunk = []
+     for i in chunked:
+             if type(i) == Tree:
+                     current_chunk.append(" ".join([token for token, pos in i.leaves()]))
+             elif current_chunk:
+                     named_entity = " ".join(current_chunk)
+                     if named_entity not in continuous_chunk:
+                             continuous_chunk.append(named_entity)
+                             current_chunk = []
+             else:
+                     continue
+     return continuous_chunk
+     
+
+
+
+
+import nltk
+from stop_words import get_stop_words
+from nltk.probability  import FreqDist
+
+stopwords_en = get_stop_words('en')
+
+#corpus of documents
+data = []
+
+#stop words of english are removed by the below function
+def preprocessing(raw):
+    wordlist=nltk.word_tokenize(raw)
+    text=[w.lower() for w in wordlist if w not in stopwords_en]
+    return text
+
+
+similarity_scores = []
+doc_number = []
+
+#We need to find documents that are similar to sample_doc from the corpus built above - data .
+
+#Sample Usecases
+#Machine Learning Artificial Intelligence machines Technology Mobile Internet of things
+#health care disease savings early age young lifespan hospitals pharmacy medicines tablets medical field food water nutrients health
+#economy mutual funds wealth high returns economic sector returns benefits 
+
+sample_doc = '''health care disease savings early age young lifespan hospitals pharmacy medicines tablets medical field food water nutrients health'''
+
+for doc in data:
+    word_set=word_set.union(set(preprocessing(doc)))
+word_set=word_set.union(set(preprocessing(sample_doc)))
+
+
+i=0
+for doc in data:
+    text1=preprocessing(doc)
+    text2=preprocessing(sample_doc)
+
+    #TF Calculations
+
+    freqd_text1=FreqDist(text1)
+    text1_length=len(text1)
+
+    text1_tf_dict = dict.fromkeys(word_set,0)
+    for word in text1:
+        text1_tf_dict[word] = freqd_text1[word]/text1_length
+
+
+    freqd_text2=FreqDist(text2)
+    text2_length=len(text2)
+
+    text2_tf_dict = dict.fromkeys(word_set,0)
+    for word in text2:
+        text2_tf_dict[word] = freqd_text2[word]/text2_length
+
+
+    #IDF Calculations
+
+    text12_idf_dict=dict.fromkeys(word_set,0)
+    text12_length = len(data)
+    for word in text12_idf_dict.keys():
+        if word in text1:
+            text12_idf_dict[word]+=1
+        if word in text2:
+            text12_idf_dict[word]+=1
+
+    import math
+    for word,val  in text12_idf_dict.items():
+        if val == 0 :
+            val=0.01
+            text12_idf_dict[word]=1+math.log(text12_length/(float(val)))
+
+
+    #TF-IDF Calculations
+
+    text1_tfidf_dict=dict.fromkeys(word_set,0)
+    for word in text1:
+        text1_tfidf_dict[word] = (text1_tf_dict[word])*(text12_idf_dict[word])
+
+    text2_tfidf_dict=dict.fromkeys(word_set,0)
+    for word in text2:
+        text2_tfidf_dict[word] = (text2_tf_dict[word])*(text12_idf_dict[word])
+
+
+    #Finding cosine distance which ranges between 0 and 1. 1 implies documents are similar since cos-inverse(0)=1 that is 
+    #vectors are collinear.cos-inverse(90)=1 that is vectors are othogonal to each other implying compltely dissimilar.
+
+    v1=list(text1_tfidf_dict.values())
+    v2=list(text2_tfidf_dict.values())
+
+    similarity= 1- nltk.cluster.cosine_distance(v1,v2)
+    doc_number.append(int(i))
+    similarity_scores.append(float(format(similarity*100,'4.2f')))
+    i=i+1
+
+    #print("Similarity Index = {:4.2f} % ".format(similarity*100))
+
+#print('Document IDs : ' + ', '.join(str(e) for e in doc_number))    
+print('Similarity % : ' + ', '.join(str(e) for e in similarity_scores))
+
+
+
+
+#Based on similarity scores computed previously sort the document indices in ascending leading to most similar document indices
+#present at the end of array
+sorted_doc_list = [doc_number for _,doc_number in sorted(zip(similarity_scores,doc_number))]
+
+
+#printing top 3 documents which are most similar to sample_doc
+j = 0
+n=3
+for doc in reversed(sorted_doc_list):
+    print('\n\n',data[doc][:1000])
+    j=j+1
+    if j==n :
+        break
+
